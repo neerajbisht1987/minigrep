@@ -15,7 +15,7 @@ pub fn run(config:ConfigInfo)->Result<(),Box<Error>>
 	let mut contents = String::new();
     f.read_to_string(&mut contents)?;
 
-    for line in search(&config.query,&contents)
+    for line in search(&config.query,&contents,true)
     {
     println!("{}", line);	
     }
@@ -23,24 +23,28 @@ pub fn run(config:ConfigInfo)->Result<(),Box<Error>>
 }
 
 impl ConfigInfo {
-pub fn new(args:&[String])->Result<ConfigInfo,&'static str>{
-	if args.len() < 3 {
-	return Err("not enough argument");
-	}
-	let query = args[1].clone();
-    let filename = args[2].clone();
+pub fn new(mut args:std::env::Args)->Result<ConfigInfo,&'static str>{
+	args.next();
+    let query = match args.next() {
+        Some(V)=>V,
+        None=> return Err("Did not get a query string"),
+    };
+
+    let filename = match args.next() {
+        Some(V)=>V,
+        None=> return Err("Did not get a filename")
+    };
 	Ok(ConfigInfo{query,filename})
 }
 }
 
-pub fn search<'a>(query: &str, contents: &'a str) -> Vec<&'a str> { 
-    let mut results = Vec::new();
-    for line in contents.lines(){
-        if line.contains(query){
-            results.push(line);
-        }
+pub fn search<'a>(query: &str, contents: &'a str,caseSensitivity:bool) -> Vec<&'a str> { 
+        if caseSensitivity {
+    contents.lines().filter(|line| line.contains(&query)).collect()
     }
-    results
+    else{
+    contents.lines().filter(|line| line.to_lowercase().contains(&query)).collect()
+    }
 }
 
 #[cfg(test)]
@@ -53,6 +57,9 @@ Rust:
 safe, fast, productive.
 Pick three.";
 assert_eq!(
-vec!["safe, fast, productive."], search(query, contents)
+vec!["safe, fast, productive."], search(query, contents,true)
+); 
+assert_eq!(
+vec!["safe, fast, productive."], search(query, contents,false)
 ); }
 }
